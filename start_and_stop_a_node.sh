@@ -5,6 +5,10 @@
 #$4 - unpack DB?
 #$5 - number of nodes to load
 #$6 - python script
+#$7 - enbale ipfs?
+#$8 - enable batch transactions?
+#$9 - enable transactions compression?
+
 
 echo "starting node"
 port=$2
@@ -45,8 +49,36 @@ do
     else
     echo "start node.. mainnet on port: "$port
     fi
+
+    if [ -n "$7" ];
+    then
+        cmdOpt=${cmdOpt}" --snapshot=./Snapshot.txt --mwm 1 --walk-validator \"NULL\" --ledger-validator \"NULL\"
+                          --max-peers 40 --remote --enable-streaming-graph --entrypoint-selector-algorithm \"KATZ\"
+                          --tip-sel-algo \"CONFLUX\""
+        if [[ "$7" = "false" ]]
+        then
+            cmdOpt=${cmdOpt}" --ipfs-txns false"
+        fi
+    fi
+
+    if [ -n "$8" ];
+    then
+        if $8
+        then
+            cmdOpt=${cmdOpt}" --batch-txns"
+        fi
+    fi
+
+    if [ -n "$9" ];
+    then
+        if $9
+        then
+            cmdOpt=${cmdOpt}" --compression-txns"
+        fi
+    fi
+
     echo "cmdOpt ="$cmdOpt
-    java -jar iri-$1.jar -p $port -u $port -t `expr $port + $5` -n 'udp://localhost:'`expr $port - 1`' udp://localhost:'`expr $port + 1` $cmdOpt &> iri.log &
+    java -jar iri-$1.jar -p $port -u $port -t $((port + $5)) -n 'udp://localhost:'$((port - 1))' udp://localhost:'$((port + 1)) $cmdOpt &> iri.log &
     echo $! > iri.pid
     cd ..
     ((port++))
@@ -54,11 +86,11 @@ done
 
 #give time to the node to init
 #TODO instead of sleep sample API until it is up
-sleep 40
+sleep 30
 if [ -n "$6" ];
 then
     echo "start python script.."
-    python $6 $2
+    python $6 $2 $7 $8 $9
     rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
 fi
 
